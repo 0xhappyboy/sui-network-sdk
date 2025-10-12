@@ -1,0 +1,12 @@
+[package]
+name = "sui-network-sdk"
+version = "0.1.0"
+edition = "2024"
+authors = ["happyboy <superhappyboy1995@gmail.com>"]
+description = "sui network sdk"
+keywords = ["trade", "crypto", "finance", "sui", "sui network"]
+license = "GPL-3.0"
+readme = "README.md"
+repository = "https://github.com/0xhappyboy/raydium-sdk"
+
+[dependencies]
