@@ -7,6 +7,6 @@ description = "sui network sdk"
 keywords = ["trade", "crypto", "finance", "sui", "sui network"]
 license = "GPL-3.0"
 readme = "README.md"
-repository = "https://github.com/0xhappyboy/raydium-sdk"
+repository = "https://github.com/0xhappyboy/sui-network-sdk"
 
 [dependencies]
