@@ -1,41 +1,43 @@
 use serde::{Deserialize, Serialize};
+use std::fmt;
+
+use crate::global::devnet;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SuiClientConfig {
     pub rpc_url: String,
-    pub ws_url: String,
+    pub wss_url: String,
     pub faucet_url: String,
 }
 
 impl Default for SuiClientConfig {
     fn default() -> Self {
         Self {
-            rpc_url: "https://fullnode.devnet.sui.io:443".to_string(),
-            ws_url: "wss://fullnode.devnet.sui.io:443".to_string(),
-            faucet_url: "https://faucet.devnet.sui.io/gas".to_string(),
+            rpc_url: devnet::RPC_URL.to_string(),
+            wss_url: devnet::WSS_URL.to_string(),
+            faucet_url: devnet::FAUCET_URL.to_string(),
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SuiObject {
+pub struct Object {
     pub object_id: String,
     pub version: u64,
     pub digest: String,
     #[serde(rename = "type")]
     pub object_type: String,
-    pub owner: SuiOwner,
+    pub owner: Owner,
     pub previous_transaction: String,
-    pub storage_rebate: Option<u64>,
-    pub data: SuiObjectData,
+    pub data: ObjectData,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SuiOwner {
-    pub AddressOwner: Option<String>,
-    pub ObjectOwner: Option<String>,
-    pub Shared: Option<SharedOwner>,
-    pub Immutable: Option<bool>,
+pub struct Owner {
+    pub address_owner: Option<String>,
+    pub object_owner: Option<String>,
+    pub shared: Option<SharedOwner>,
+    pub immutable: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -44,102 +46,171 @@ pub struct SharedOwner {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SuiObjectData {
+pub struct ObjectData {
     pub data_type: String,
     pub fields: serde_json::Value,
     pub has_public_transfer: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SuiTransactionResponse {
+pub struct TransactionResponse {
     pub digest: String,
-    pub raw_transaction: String,
-    pub effects: SuiTransactionEffects,
-    pub events: Vec<SuiEvent>,
+    pub effects: TransactionEffects,
+    pub events: Vec<Event>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SuiTransactionEffects {
-    pub status: SuiExecutionStatus,
-    pub gas_used: SuiGasCostSummary,
-    pub shared_objects: Vec<SuiObjectRef>,
+pub struct TransactionEffects {
+    pub status: ExecutionStatus,
+    pub gas_used: GasCostSummary,
     pub transaction_digest: String,
-    pub mutated: Vec<SuiOwnedObjectRef>,
-    pub created: Vec<SuiOwnedObjectRef>,
-    pub deleted: Vec<SuiObjectRef>,
+    pub mutated: Vec<OwnedObjectRef>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SuiExecutionStatus {
+pub struct ExecutionStatus {
     pub status: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SuiGasCostSummary {
+pub struct GasCostSummary {
     pub computation_cost: u64,
     pub storage_cost: u64,
     pub storage_rebate: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SuiObjectRef {
+pub struct OwnedObjectRef {
+    pub owner: Owner,
+    pub reference: ObjectRef,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ObjectRef {
     pub object_id: String,
     pub version: u64,
     pub digest: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SuiOwnedObjectRef {
-    pub owner: SuiOwner,
-    pub reference: SuiObjectRef,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SuiEvent {
-    pub id: SuiEventId,
-    pub package_id: String,
-    pub transaction_module: String,
-    pub sender: String,
+pub struct Event {
+    pub id: EventId,
     #[serde(rename = "type")]
     pub event_type: String,
     pub parsed_json: serde_json::Value,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SuiEventId {
+pub struct EventId {
     pub tx_digest: String,
     pub event_seq: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Coin {
-    pub coin_type: String,
     pub coin_object_id: String,
     pub version: u64,
     pub digest: String,
     pub balance: u64,
-    pub locked_until_epoch: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RpcResult<T> {
+pub struct RpcRequest {
     pub jsonrpc: String,
-    pub result: T,
+    pub id: u64,
+    pub method: String,
+    pub params: Vec<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RpcResponse<T> {
+    pub jsonrpc: String,
+    pub result: Option<T>,
+    pub error: Option<RpcError>,
     pub id: u64,
 }
 
-pub type SuiResult<T> = Result<T, SuiError>;
-
-#[derive(Debug, Clone)]
-pub struct SuiError {
-    pub message: String,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RpcError {
     pub code: i32,
+    pub message: String,
 }
 
-impl std::fmt::Display for SuiError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "SuiError {}: {}", self.code, self.message)
+#[derive(Debug)]
+pub enum SuiError {
+    HttpRequest(String),
+    WebSocket(String),
+    Json(String),
+    Hex(String),
+    Base64(String),
+    InvalidPrivateKey,
+    Rpc(String),
+    Transaction(String),
+    Io(String),
+    CallContract(String),
+    Gas(String),
+    Sign(String),
+}
+
+impl fmt::Display for SuiError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SuiError::HttpRequest(e) => write!(f, "HTTP request failed: {}", e),
+            SuiError::WebSocket(e) => write!(f, "WebSocket error: {}", e),
+            SuiError::Json(e) => write!(f, "JSON error: {}", e),
+            SuiError::Hex(e) => write!(f, "Hex error: {}", e),
+            SuiError::Base64(e) => write!(f, "Base64 error: {}", e),
+            SuiError::InvalidPrivateKey => write!(f, "Invalid private key"),
+            SuiError::Rpc(e) => write!(f, "RPC error: {}", e),
+            SuiError::Transaction(e) => write!(f, "Transaction error: {}", e),
+            SuiError::Io(e) => write!(f, "IO error: {}", e),
+            SuiError::CallContract(e) => write!(f, "Call Contract error: {}", e),
+            SuiError::Gas(e) => write!(f, "Gas error: {}", e),
+            SuiError::Sign(e) => write!(f, "Sign error: {}", e),
+        }
     }
 }
 
 impl std::error::Error for SuiError {}
+
+impl From<reqwest::Error> for SuiError {
+    fn from(err: reqwest::Error) -> Self {
+        SuiError::HttpRequest(err.to_string())
+    }
+}
+
+impl From<serde_json::Error> for SuiError {
+    fn from(err: serde_json::Error) -> Self {
+        SuiError::Json(err.to_string())
+    }
+}
+
+impl From<hex::FromHexError> for SuiError {
+    fn from(err: hex::FromHexError) -> Self {
+        SuiError::Hex(err.to_string())
+    }
+}
+
+impl From<base64::DecodeError> for SuiError {
+    fn from(err: base64::DecodeError) -> Self {
+        SuiError::Base64(err.to_string())
+    }
+}
+
+impl From<std::io::Error> for SuiError {
+    fn from(err: std::io::Error) -> Self {
+        SuiError::Io(err.to_string())
+    }
+}
+
+impl From<tokio_tungstenite::tungstenite::Error> for SuiError {
+    fn from(err: tokio_tungstenite::tungstenite::Error) -> Self {
+        SuiError::WebSocket(err.to_string())
+    }
+}
+
+impl From<url::ParseError> for SuiError {
+    fn from(err: url::ParseError) -> Self {
+        SuiError::WebSocket(err.to_string())
+    }
+}
