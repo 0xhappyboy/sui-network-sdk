@@ -1,11 +1,14 @@
+/// mainnet global params
 pub mod mainnet {
     pub const RPC_URL: &str = "https://fullnode.mainnet.sui.io:443";
     pub const WSS_URL: &str = "wss://fullnode.mainnet.sui.io:443";
 }
+/// testnet global params
 pub mod testnet {
     pub const RPC_URL: &str = "https://fullnode.testnet.sui.io:443";
     pub const WSS_URL: &str = "wss://fullnode.testnet.sui.io:443";
 }
+/// devnet global params
 pub mod devnet {
     pub const RPC_URL: &str = "https://fullnode.devnet.sui.io:443";
     pub const WSS_URL: &str = "wss://fullnode.devnet.sui.io:443";
